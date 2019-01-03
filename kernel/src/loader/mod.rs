@@ -102,6 +102,7 @@ where
         if mem_offset.offset() < x86_64::layout::HIMEM_START {
             return Err(Error::InvalidProgramHeaderAddress);
         }
+        info!("Loading ELF segment at {:x?}", phdr.p_paddr);
 
         guest_mem
             .read_to_memory(mem_offset, kernel_image, phdr.p_filesz as usize)

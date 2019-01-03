@@ -1,0 +1,1 @@
+./scripts/configure-logging.sh

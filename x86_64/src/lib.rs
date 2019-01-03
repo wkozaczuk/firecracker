@@ -11,6 +11,8 @@ extern crate kvm_gen;
 extern crate libc;
 extern crate memory_model;
 extern crate sys_util;
+#[macro_use]
+extern crate logger;
 
 #[allow(dead_code)]
 #[allow(non_upper_case_globals)]
@@ -186,6 +188,8 @@ fn add_e820_entry(params: &mut boot_params, addr: u64, size: u64, mem_type: u32)
     params.e820_map[params.e820_entries as usize].size = size;
     params.e820_map[params.e820_entries as usize].type_ = mem_type;
     params.e820_entries += 1;
+
+    info!("Added e820 entry at:{:x?} of size: {:x?}", addr, size);
 
     Ok(())
 }

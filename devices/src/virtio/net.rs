@@ -169,6 +169,7 @@ impl NetEpollHandler {
             error!("Failed to signal used queue: {:?}", e);
             METRICS.net.event_fails.inc();
         }
+        info!("Interrupt delivered to guest!");
     }
 
     // Attempts to copy a single frame into the guest if there is enough

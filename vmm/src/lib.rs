@@ -820,14 +820,17 @@ impl Vmm {
                     ))?,
                 &self.kvm,
             ).map_err(|e| StartMicrovmError::ConfigureVm(e))?;
+        info!("After memory_init");
         self.vm
             .setup_irqchip(
                 &self.legacy_device_manager.com_evt_1_3,
                 &self.legacy_device_manager.com_evt_2_4,
             ).map_err(|e| StartMicrovmError::ConfigureVm(e))?;
+        info!("After setup_irqchip");
         self.vm
             .create_pit()
             .map_err(|e| StartMicrovmError::ConfigureVm(e))?;
+        info!("After create_pit");
 
         // mmio_device_manager is instantiated in init_devices, which is called before init_microvm.
         let device_manager = self
@@ -843,6 +846,7 @@ impl Vmm {
         self.legacy_device_manager
             .register_devices()
             .map_err(StartMicrovmError::LegacyIOBus)?;
+        info!("After register_devices");
 
         Ok(())
     }
@@ -851,6 +855,12 @@ impl Vmm {
         &mut self,
         entry_addr: GuestAddress,
     ) -> std::result::Result<(), StartMicrovmError> {
+        let kernel_config = self
+            .kernel_config
+            .as_mut()
+            .ok_or(StartMicrovmError::MissingKernelConfig)?;
+        info!("Kernel cmdline: {}", kernel_config.cmdline.as_str());
+
         // vm_config has a default value for vcpu_count.
         let vcpu_count = self
             .vm_config
@@ -1045,6 +1055,8 @@ impl Vmm {
         kernel_loader::load_cmdline(vm_memory, kernel_config.cmdline_addr, &cmdline_cstring)
             .map_err(|e| StartMicrovmError::Loader(e))?;
 
+        info!("Kernel entry at {:x?}", entry_addr);
+
         // The vcpu_count has a default value. We shouldn't have gotten to this point without
         // having set the vcpu count.
         let vcpu_count = self
@@ -1112,14 +1124,19 @@ impl Vmm {
         self.init_microvm()
             .map_err(|e| VmmActionError::StartMicrovm(ErrorKind::Internal, e))?;
 
+        info!("Before load_kernel");
         let entry_addr = self
             .load_kernel()
             .map_err(|e| VmmActionError::StartMicrovm(ErrorKind::Internal, e))?;
 
+        info!("Before register_events");
         self.register_events()
             .map_err(|e| VmmActionError::StartMicrovm(ErrorKind::Internal, e))?;
+
+        info!("Before start_vcpus");
         self.start_vcpus(entry_addr)
             .map_err(|e| VmmActionError::StartMicrovm(ErrorKind::Internal, e))?;
+        info!("After start_vcpus");
 
         // Use expect() to crash if the other thread poisoned this lock.
         self.shared_info

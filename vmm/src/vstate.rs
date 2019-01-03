@@ -103,6 +103,7 @@ impl Vm {
             )
         })?;
         self.guest_mem = Some(guest_mem);
+        info!("Memory init 1");
 
         let tss_addr = GuestAddress(KVM_TSS_ADDRESS);
         self.fd
@@ -119,6 +120,7 @@ impl Vm {
         self.fd.register_irqfd(com_evt_1_3, 4).map_err(Error::Irq)?;
         self.fd.register_irqfd(com_evt_2_4, 3).map_err(Error::Irq)?;
 
+        info!("setup_irqchip");
         Ok(())
     }
 

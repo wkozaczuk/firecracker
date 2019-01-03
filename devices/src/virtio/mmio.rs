@@ -224,7 +224,10 @@ impl BusDevice for MmioDevice {
                 let v = LittleEndian::read_u32(data);
                 match offset {
                     0x14 => self.features_select = v,
-                    0x20 => self.device.ack_features(self.acked_features_select, v),
+                    0x20 => {
+                       self.device.ack_features(self.acked_features_select, v);
+                       info!("Acked features!");
+                    } 
                     0x24 => self.acked_features_select = v,
                     0x30 => self.queue_select = v,
                     0x38 => mut_q = self.with_queue_mut(|q| q.size = v as u16),
@@ -232,8 +235,12 @@ impl BusDevice for MmioDevice {
                     0x64 => {
                         self.interrupt_status
                             .fetch_and(!(v as usize), Ordering::SeqCst);
+                        info!("Interrupt acked by guest!");
                     }
-                    0x70 => self.driver_status = v,
+                    0x70 => {
+                        self.driver_status = v;
+                        info!("Set driver status: {:x?}", v);
+                    }
                     0x80 => mut_q = self.with_queue_mut(|q| lo(&mut q.desc_table, v)),
                     0x84 => mut_q = self.with_queue_mut(|q| hi(&mut q.desc_table, v)),
                     0x90 => mut_q = self.with_queue_mut(|q| lo(&mut q.avail_ring, v)),
@@ -272,10 +279,17 @@ impl BusDevice for MmioDevice {
                             self.queues.clone(),
                             self.queue_evts.split_off(0),
                         ).expect("Failed to activate device");
+                    info!("Mmio device activated!");
                     self.device_activated = true;
                 }
             }
         }
+        //if self.is_driver_ready() {
+        //    info!("driver ready!");
+        //}
+        //if self.are_queues_valid() {
+        //    info!("queues valid!");
+        //}
     }
 
     fn interrupt(&self, irq_mask: u32) {

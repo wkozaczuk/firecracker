@@ -163,6 +163,10 @@ fn configure_segments_and_sregs(mem: &GuestMemory, sregs: &mut kvm_sregs) -> Res
         gdt::gdt_entry(0x808b, 0, 0xfffff), // TSS
     ];
 
+    info!("GDT code segment entry: {:x?}", gdt_table[1]);
+    info!("GDT data segment entry: {:x?}", gdt_table[2]);
+    info!("GDT tss segment entry:  {:x?}", gdt_table[3]);
+
     let code_seg = gdt::kvm_segment_from_gdt(gdt_table[1], 1);
     let data_seg = gdt::kvm_segment_from_gdt(gdt_table[2], 2);
     let tss_seg = gdt::kvm_segment_from_gdt(gdt_table[3], 3);

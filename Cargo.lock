@@ -341,6 +341,7 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "logger 0.1.0",
  "memory_model 0.1.0",
  "sys_util 0.1.0",
  "x86_64 0.1.0",
@@ -1264,6 +1265,7 @@ dependencies = [
  "kvm 0.1.0",
  "kvm_gen 0.1.0",
  "libc 0.2.44 (registry+https://github.com/rust-lang/crates.io-index)",
+ "logger 0.1.0",
  "memory_model 0.1.0",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "sys_util 0.1.0",
