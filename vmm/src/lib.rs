@@ -2174,12 +2174,12 @@ pub fn start_vmm_without_api(
     let vm_config = VmConfig {
         vcpu_count: Some(1),
         mem_size_mib: Some(64),
-        ht_enabled: Some(true),
+        ht_enabled: Some(false),
         cpu_template: None,
     };
     let res3 = vmm.set_vm_configuration(vm_config);
     if res3.is_err() {
-        println!("insert_block_device() failed!");
+        println!("set_vm_configuration() failed!");
     }
 
     let logger = LoggerConfig {
