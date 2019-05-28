@@ -96,7 +96,7 @@ fn main() {
                         ",
                 )
                 .takes_value(true)
-                .default_value("2")
+                .default_value("0")
                 .possible_values(&["0", "1", "2"]),
         )
         .arg(
@@ -136,9 +136,7 @@ fn main() {
         vmm_version: crate_version!().to_string(),
     }));
 
-    //println!("Before start_vmm_without_api ...");
     vmm::start_vmm_without_api(shared_info, seccomp_level);
-    error!("Main END");
 }
 
 #[cfg(test)]
