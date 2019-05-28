@@ -1476,6 +1476,7 @@ impl Vmm {
 
         // Exit from Firecracker using the provided exit code. Safe because we're terminating
         // the process anyway.
+        info!("Vmm is REALLY about to stop.");
         unsafe {
             libc::_exit(exit_code);
         }
@@ -2202,7 +2203,6 @@ pub fn start_vmm_without_api(
         Ok(()) => {
             info!("Gracefully terminated VMM control loop");
             vmm.stop(i32::from(FC_EXIT_CODE_OK));
-            error!("start_vmm_without_api END");
         }
         Err(e) => {
             error!("Abruptly exited VMM control loop: {:?}", e);
