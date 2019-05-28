@@ -2127,6 +2127,62 @@ pub fn start_vmm_thread(
         .expect("VMM thread spawn failed.")
 }
 
+/// Starts a new vmm without API.
+///
+/// # Arguments
+///
+/// * `api_shared_info` - A parameter for storing information on the VMM (e.g the current state).
+/// * `seccomp_level` - The level of seccomp filtering used. Filters are loaded before executing
+///                     guest code. Can be one of 0 (seccomp disabled), 1 (filter by syscall
+///                     number) or 2 (filter by syscall number and argument values).
+pub fn start_vmm_without_api(
+    api_shared_info: Arc<RwLock<InstanceInfo>>,
+    seccomp_level: u32,
+) {
+    // If this fails, consider it fatal. Use expect().
+    let api_event_fd = EventFd::new().expect("cannot create eventFD");
+    let (_to_vmm, from_api) = channel();
+    let mut vmm = Vmm::new(api_shared_info, api_event_fd, from_api, seccomp_level)
+        .expect("Cannot create VMM");
+
+    let res = vmm.configure_boot_source(
+        String::from("/home/wkozaczuk/projects/osv/build/release.x64/loader-stripped.elf"),
+        Some(String::from("--nopci /hello")),
+    );
+
+    if res.is_err() {
+        println!("configure_boot_source() failed!");
+    }
+
+    let root_block_device = BlockDeviceConfig {
+        drive_id: String::from("rootfs"),
+        path_on_host: PathBuf::from(String::from("/home/wkozaczuk/projects/osv/build/release.x64/usr.raw")),
+        is_root_device: false,
+        partuuid: None,
+        is_read_only: false,
+        rate_limiter: None,
+    };
+
+    let res2 = vmm.insert_block_device(root_block_device);
+    if res2.is_err() {
+        println!("insert_block_device() failed!");
+    }
+
+    let _res = vmm.start_microvm();
+
+    //println!("Before vmm.run_control() ...");
+    match vmm.run_control() {
+        Ok(()) => {
+            info!("Gracefully terminated VMM control loop");
+            vmm.stop(i32::from(FC_EXIT_CODE_OK))
+        }
+        Err(e) => {
+            error!("Abruptly exited VMM control loop: {:?}", e);
+            vmm.stop(i32::from(FC_EXIT_CODE_GENERIC_ERROR));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate tempfile;

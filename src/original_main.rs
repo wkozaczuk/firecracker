@@ -19,12 +19,17 @@ extern crate vmm;
 use backtrace::Backtrace;
 use clap::{App, Arg};
 
+use std::io::ErrorKind;
 use std::panic;
+use std::path::PathBuf;
 use std::process;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
 
+use api_server::{ApiServer, Error};
 use fc_util::validators::validate_instance_id;
 use logger::{Metric, LOGGER, METRICS};
+use mmds::MMDS;
 use vmm::signal_handler::register_signal_handlers;
 use vmm::vmm_config::instance_info::{InstanceInfo, InstanceState};
 
@@ -111,6 +116,11 @@ fn main() {
         )
         .get_matches();
 
+    let bind_path = cmd_arguments
+        .value_of("api_sock")
+        .map(PathBuf::from)
+        .expect("Missing argument: api_sock");
+
     // It's safe to unwrap here because clap's been provided with a default value
     let instance_id = cmd_arguments.value_of("id").unwrap().to_string();
 
@@ -128,14 +138,46 @@ fn main() {
         .parse::<u32>()
         .unwrap();
 
+    let start_time_us = cmd_arguments.value_of("start-time-us").map(|s| {
+        s.parse::<u64>()
+            .expect("'start-time-us' parameter expected to be of 'u64' type.")
+    });
+
+    let start_time_cpu_us = cmd_arguments.value_of("start-time-cpu-us").map(|s| {
+        s.parse::<u64>()
+            .expect("'start-time-cpu_us' parameter expected to be of 'u64' type.")
+    });
+
     let shared_info = Arc::new(RwLock::new(InstanceInfo {
         state: InstanceState::Uninitialized,
         id: instance_id,
         vmm_version: crate_version!().to_string(),
     }));
+    let mmds_info = MMDS.clone();
+    let (to_vmm, from_api) = channel();
+    let server =
+        ApiServer::new(mmds_info, shared_info.clone(), to_vmm).expect("Cannot create API server");
 
-    //println!("Before start_vmm_without_api ...");
-    vmm::start_vmm_without_api(shared_info, seccomp_level);
+    let api_event_fd = server
+        .get_event_fd_clone()
+        .expect("Cannot clone API eventFD.");
+
+    let _vmm_thread_handle =
+        vmm::start_vmm_thread(shared_info, api_event_fd, from_api, seccomp_level);
+
+    match server.bind_and_run(bind_path, start_time_us, start_time_cpu_us, seccomp_level) {
+        Ok(_) => (),
+        Err(Error::Io(inner)) => match inner.kind() {
+            ErrorKind::AddrInUse => panic!("Failed to open the API socket: {:?}", Error::Io(inner)),
+            _ => panic!(
+                "Failed to communicate with the API socket: {:?}",
+                Error::Io(inner)
+            ),
+        },
+        Err(eventfd_err @ Error::Eventfd(_)) => {
+            panic!("Failed to open the API socket: {:?}", eventfd_err)
+        }
+    }
 }
 
 #[cfg(test)]
