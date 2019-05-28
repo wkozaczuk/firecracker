@@ -36,6 +36,8 @@ fn main() {
         .preinit(Some(DEFAULT_INSTANCE_ID.to_string()))
         .expect("Failed to register logger");
 
+    error!("Main START");
+
     if let Err(e) = register_signal_handlers() {
         error!("Failed to register signal handlers: {}", e);
         process::exit(i32::from(vmm::FC_EXIT_CODE_GENERIC_ERROR));
@@ -136,6 +138,7 @@ fn main() {
 
     //println!("Before start_vmm_without_api ...");
     vmm::start_vmm_without_api(shared_info, seccomp_level);
+    error!("Main END");
 }
 
 #[cfg(test)]

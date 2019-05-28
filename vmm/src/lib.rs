@@ -2139,6 +2139,8 @@ pub fn start_vmm_without_api(
     api_shared_info: Arc<RwLock<InstanceInfo>>,
     seccomp_level: u32,
 ) {
+    use serde_json::Value;
+
     // If this fails, consider it fatal. Use expect().
     let api_event_fd = EventFd::new().expect("cannot create eventFD");
     let (_to_vmm, from_api) = channel();
@@ -2168,13 +2170,39 @@ pub fn start_vmm_without_api(
         println!("insert_block_device() failed!");
     }
 
+    let vm_config = VmConfig {
+        vcpu_count: Some(1),
+        mem_size_mib: Some(64),
+        ht_enabled: Some(true),
+        cpu_template: None,
+    };
+    let res3 = vmm.set_vm_configuration(vm_config);
+    if res3.is_err() {
+        println!("insert_block_device() failed!");
+    }
+
+    let logger = LoggerConfig {
+        log_fifo: String::from("/tmp/fc.log"),
+        metrics_fifo: String::from("/tmp/fc_metrics.log"),
+        level: LoggerLevel::Info,
+        show_level: true,
+        show_log_origin: true,
+        #[cfg(target_arch = "x86_64")]
+        options: Value::Array(vec![]),
+    };
+    let res4 = vmm.init_logger(logger);
+    if res4.is_err() {
+        println!("init_logger() failed!");
+    }
+
     let _res = vmm.start_microvm();
 
     //println!("Before vmm.run_control() ...");
     match vmm.run_control() {
         Ok(()) => {
             info!("Gracefully terminated VMM control loop");
-            vmm.stop(i32::from(FC_EXIT_CODE_OK))
+            vmm.stop(i32::from(FC_EXIT_CODE_OK));
+            error!("start_vmm_without_api END");
         }
         Err(e) => {
             error!("Abruptly exited VMM control loop: {:?}", e);
