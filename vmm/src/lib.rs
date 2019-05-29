@@ -2179,14 +2179,14 @@ pub fn start_vmm_without_api(
     for block_device_config in block_device_configs {
         let res = vmm.insert_block_device(block_device_config);
         if res.is_err() {
-            error!("insert_block_device() failed!");
+            error!("Failed to insert block device!");
         }
     }
 
     for network_interface_config in network_interface_configs {
         let res = vmm.insert_net_device(network_interface_config);
         if res.is_err() {
-            error!("insert_net_device() failed!");
+            error!("Failed to insert net device!");
         }
     }
 

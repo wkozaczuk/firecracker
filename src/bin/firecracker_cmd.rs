@@ -128,16 +128,22 @@ fn main() {
         cpu_template: None,
     };
 
-    let root_block_device = BlockDeviceConfig {
-        drive_id: String::from("rootfs"),
-        path_on_host: PathBuf::from(cmd_arguments.value_of("block-device-path").unwrap()),
-        is_root_device: false,
-        partuuid: None,
-        is_read_only: false,
-        rate_limiter: None,
-    };
     let mut block_devices = VecDeque::<BlockDeviceConfig>::new();
-    block_devices.push_front(root_block_device);
+    if let Some(block_device_paths) = cmd_arguments.values_of("block-device-path") {
+        let mut block_id = 0;
+        for block_device_path in block_device_paths {
+            let block_device = BlockDeviceConfig {
+                drive_id: format!("block_{}", block_id),
+                path_on_host: PathBuf::from(block_device_path),
+                is_root_device: false,
+                partuuid: None,
+                is_read_only: false,
+                rate_limiter: None,
+            };
+            block_devices.push_front(block_device);
+            block_id = block_id + 1;
+        }
+    }
 
     vmm::start_vmm_without_api(
         shared_info,
