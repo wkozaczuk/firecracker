@@ -98,6 +98,14 @@ fn main() {
             Arg::with_name("block-device-path")
                 .long("block-device-path")
                 .help("Block device raw path")
+                .multiple(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("network-device-tap-id")
+                .long("network-device-tap-id")
+                .help("Host TAP device ID")
+                .multiple(true)
                 .takes_value(true),
         )
         .get_matches();
@@ -145,12 +153,30 @@ fn main() {
         }
     }
 
+    let mut net_devices = VecDeque::<NetworkInterfaceConfig>::new();
+    if let Some(net_device_tap_ids) = cmd_arguments.values_of("network-device-tap-id") {
+        let mut net_id = 0;
+        for net_device_tap_id in net_device_tap_ids {
+            let net_device = NetworkInterfaceConfig {
+                iface_id: format!("eth_{}", net_id),
+                allow_mmds_requests: false,
+                guest_mac: None,
+                host_dev_name: String::from(net_device_tap_id),
+                rx_rate_limiter: None,
+                tap: None,
+                tx_rate_limiter: None,
+            };
+            net_devices.push_front(net_device);
+            net_id = net_id + 1;
+        }
+    }
+
     vmm::start_vmm_without_api(
         shared_info,
         seccomp_level,
         kernel_config,
         Some(vm_config),
         block_devices,
-        VecDeque::<NetworkInterfaceConfig>::new()
+        net_devices,
     );
 }
