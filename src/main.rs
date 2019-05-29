@@ -22,11 +22,17 @@ use clap::{App, Arg};
 use std::panic;
 use std::process;
 use std::sync::{Arc, RwLock};
+use std::collections::VecDeque;
+use std::path::PathBuf;
 
 use fc_util::validators::validate_instance_id;
 use logger::{Metric, LOGGER, METRICS};
 use vmm::signal_handler::register_signal_handlers;
 use vmm::vmm_config::instance_info::{InstanceInfo, InstanceState};
+use vmm::KernelConfiguration;
+use vmm::vmm_config::drive::BlockDeviceConfig;
+use vmm::vmm_config::machine_config::VmConfig;
+use vmm::vmm_config::net::NetworkInterfaceConfig;
 
 const DEFAULT_API_SOCK_PATH: &str = "/tmp/firecracker.socket";
 const DEFAULT_INSTANCE_ID: &str = "anonymous-instance";
@@ -136,7 +142,37 @@ fn main() {
         vmm_version: crate_version!().to_string(),
     }));
 
-    vmm::start_vmm_without_api(shared_info, seccomp_level);
+    let kernel_config = KernelConfiguration {
+        kernel_image_path: String::from("/home/wkozaczuk/projects/osv/build/release.x64/loader-stripped.elf"),
+        kernel_cmdline: Some(String::from("--nopci /hello")),
+    };
+
+    let vm_config = VmConfig {
+        vcpu_count: Some(1),
+        mem_size_mib: Some(64),
+        ht_enabled: Some(false),
+        cpu_template: None,
+    };
+
+    let root_block_device = BlockDeviceConfig {
+        drive_id: String::from("rootfs"),
+        path_on_host: PathBuf::from(String::from("/home/wkozaczuk/projects/osv/build/release.x64/usr.raw")),
+        is_root_device: false,
+        partuuid: None,
+        is_read_only: false,
+        rate_limiter: None,
+    };
+    let mut block_devices = VecDeque::<BlockDeviceConfig>::new();
+    block_devices.push_front(root_block_device);
+
+    vmm::start_vmm_without_api(
+        shared_info,
+        seccomp_level,
+        kernel_config,
+        Some(vm_config),
+        block_devices,
+        VecDeque::<NetworkInterfaceConfig>::new()
+    );
 }
 
 #[cfg(test)]

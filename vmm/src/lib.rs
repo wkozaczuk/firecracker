@@ -46,7 +46,7 @@ pub mod vmm_config;
 mod vstate;
 
 use futures::sync::oneshot;
-use std::collections::HashMap;
+use std::collections::{HashMap,VecDeque};
 use std::fmt::{Display, Formatter};
 use std::fs::{metadata, File, OpenOptions};
 use std::io;
@@ -445,6 +445,15 @@ pub struct TimestampUs {
     pub time_us: u64,
     /// Cpu time in microseconds.
     pub cputime_us: u64,
+}
+
+/// Holds kernel configuration
+#[derive(Clone, Default)]
+pub struct KernelConfiguration {
+    /// Path
+    pub kernel_image_path: String,
+    /// Command line
+    pub kernel_cmdline: Option<String>,
 }
 
 #[inline]
@@ -2139,6 +2148,10 @@ pub fn start_vmm_thread(
 pub fn start_vmm_without_api(
     api_shared_info: Arc<RwLock<InstanceInfo>>,
     seccomp_level: u32,
+    kernel_configuration: KernelConfiguration,
+    vm_config: Option<VmConfig>,
+    block_device_configs: VecDeque<BlockDeviceConfig>,
+    network_interface_configs: VecDeque<NetworkInterfaceConfig>,
 ) {
     use serde_json::Value;
 
@@ -2149,37 +2162,32 @@ pub fn start_vmm_without_api(
         .expect("Cannot create VMM");
 
     let res = vmm.configure_boot_source(
-        String::from("/home/wkozaczuk/projects/osv/build/release.x64/loader-stripped.elf"),
-        Some(String::from("--nopci /hello")),
-    );
+        kernel_configuration.kernel_image_path,
+        kernel_configuration.kernel_cmdline);
 
     if res.is_err() {
-        println!("configure_boot_source() failed!");
+        error!("configure_boot_source() failed!");
     }
 
-    let root_block_device = BlockDeviceConfig {
-        drive_id: String::from("rootfs"),
-        path_on_host: PathBuf::from(String::from("/home/wkozaczuk/projects/osv/build/release.x64/usr.raw")),
-        is_root_device: false,
-        partuuid: None,
-        is_read_only: false,
-        rate_limiter: None,
-    };
-
-    let res2 = vmm.insert_block_device(root_block_device);
-    if res2.is_err() {
-        println!("insert_block_device() failed!");
+    if let Some(vm_configuration) = vm_config {
+        let res = vmm.set_vm_configuration(vm_configuration);
+        if res.is_err() {
+            error!("set_vm_configuration() failed!");
+        }
     }
 
-    let vm_config = VmConfig {
-        vcpu_count: Some(1),
-        mem_size_mib: Some(64),
-        ht_enabled: Some(false),
-        cpu_template: None,
-    };
-    let res3 = vmm.set_vm_configuration(vm_config);
-    if res3.is_err() {
-        println!("set_vm_configuration() failed!");
+    for block_device_config in block_device_configs {
+        let res = vmm.insert_block_device(block_device_config);
+        if res.is_err() {
+            error!("insert_block_device() failed!");
+        }
+    }
+
+    for network_interface_config in network_interface_configs {
+        let res = vmm.insert_net_device(network_interface_config);
+        if res.is_err() {
+            error!("insert_net_device() failed!");
+        }
     }
 
     let logger = LoggerConfig {
@@ -2191,14 +2199,13 @@ pub fn start_vmm_without_api(
         #[cfg(target_arch = "x86_64")]
         options: Value::Array(vec![]),
     };
-    let res4 = vmm.init_logger(logger);
-    if res4.is_err() {
-        println!("init_logger() failed!");
+    let res = vmm.init_logger(logger);
+    if res.is_err() {
+        error!("init_logger() failed!");
     }
 
     let _res = vmm.start_microvm();
 
-    //println!("Before vmm.run_control() ...");
     match vmm.run_control() {
         Ok(()) => {
             info!("Gracefully terminated VMM control loop");
