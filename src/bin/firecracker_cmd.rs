@@ -81,6 +81,20 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("cpus")
+                .long("cpus")
+                .help("Number of cpus")
+                .takes_value(true)
+                .default_value("1"),
+        )
+        .arg(
+            Arg::with_name("memory-in-mbs")
+                .long("memory-in-mbs")
+                .help("Memory size in MBs")
+                .takes_value(true)
+                .default_value("64"),
+        )
+        .arg(
             Arg::with_name("seccomp-level")
                 .long("seccomp-level")
                 .help(
@@ -129,9 +143,21 @@ fn main() {
         kernel_cmdline: cmd_arguments.value_of("kernel-cmdline").map(|s| String::from(s)),
     };
 
+    let cpus = cmd_arguments
+        .value_of("cpus")
+        .unwrap()
+        .parse::<u8>()
+        .unwrap();
+
+    let memory_in_mbs = cmd_arguments
+        .value_of("memory-in-mbs")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+
     let vm_config = VmConfig {
-        vcpu_count: Some(1),
-        mem_size_mib: Some(64),
+        vcpu_count: Some(cpus),
+        mem_size_mib: Some(memory_in_mbs),
         ht_enabled: Some(false),
         cpu_template: None,
     };
