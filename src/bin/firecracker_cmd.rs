@@ -10,6 +10,7 @@ extern crate clap;
 extern crate logger;
 extern crate seccomp;
 extern crate vmm;
+extern crate net_util;
 
 #[cfg(target_arch = "x86_64")]
 use backtrace::Backtrace;
@@ -28,6 +29,7 @@ use vmm::vmm_config::instance_info::{InstanceInfo, InstanceState};
 use vmm::vmm_config::drive::BlockDeviceConfig;
 use vmm::vmm_config::machine_config::VmConfig;
 use vmm::vmm_config::net::NetworkInterfaceConfig;
+use net_util::MacAddr;
 
 const DEFAULT_INSTANCE_ID: &str = "anonymous-instance";
 
@@ -182,11 +184,12 @@ fn main() {
     let mut net_devices = VecDeque::<NetworkInterfaceConfig>::new();
     if let Some(net_device_tap_ids) = cmd_arguments.values_of("network-device-tap-id") {
         let mut net_id = 0;
+        let mac = MacAddr::parse_str("01:23:45:67:89:0A").unwrap();
         for net_device_tap_id in net_device_tap_ids {
             let net_device = NetworkInterfaceConfig {
-                iface_id: format!("eth_{}", net_id),
+                iface_id: format!("eth{}", net_id),
                 allow_mmds_requests: false,
-                guest_mac: None,
+                guest_mac: Some(mac),
                 host_dev_name: String::from(net_device_tap_id),
                 rx_rate_limiter: None,
                 tap: None,
