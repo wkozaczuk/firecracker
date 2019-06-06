@@ -336,6 +336,18 @@ impl Vcpu {
                     {
                         super::Vmm::log_boot_time(&self.create_ts);
                     }
+                    /* 
+                    if addr == 0x64
+                        && data[0] == 0xFE //CMD_RESET_CPU
+                    {
+                        self.io_bus.write(u64::from(addr), data);
+                        Err(Error::VcpuUnhandledKvmExit)
+                    }
+                    else {
+                        self.io_bus.write(u64::from(addr), data);
+                        METRICS.vcpu.exit_io_out.inc();
+                        Ok(())
+                    }*/
                     self.io_bus.write(u64::from(addr), data);
                     METRICS.vcpu.exit_io_out.inc();
                     Ok(())
@@ -423,13 +435,17 @@ impl Vcpu {
 
         thread_barrier.wait();
 
+        error!("Vstate before run_emulation()");
+
         while self.run_emulation().is_ok() {}
 
+        error!("Vstate finished !");
+
         // Nothing we need do for the success case.
-        if let Err(e) = vcpu_exit_evt.write(1) {
-            METRICS.vcpu.failures.inc();
-            error!("Failed signaling vcpu exit event: {}", e);
-        }
+        //if let Err(e) = vcpu_exit_evt.write(1) {
+        //    METRICS.vcpu.failures.inc();
+        //    error!("Failed signaling vcpu exit event: {}", e);
+        //}
     }
 }
 

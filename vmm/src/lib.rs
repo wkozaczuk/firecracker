@@ -35,6 +35,7 @@ extern crate net_util;
 extern crate rate_limiter;
 extern crate seccomp;
 extern crate sys_util;
+extern crate core;
 
 /// Syscalls allowed through the seccomp filter.
 pub mod default_syscalls;
@@ -745,6 +746,7 @@ struct Vmm {
 
     // The level of seccomp filtering used. Seccomp filters are loaded before executing guest code.
     seccomp_level: u32,
+    start_ts: TimestampUs,
 }
 
 impl Vmm {
@@ -772,6 +774,11 @@ impl Vmm {
         let kvm = KvmContext::new()?;
         let vm = Vm::new(kvm.fd()).map_err(Error::Vm)?;
 
+        let now = TimestampUs {
+            time_us: get_time_us(),
+            cputime_us: now_cputime_us(),
+        };
+
         Ok(Vmm {
             kvm,
             vm_config: VmConfig::default(),
@@ -794,6 +801,7 @@ impl Vmm {
             from_api,
             write_metrics_event,
             seccomp_level,
+            start_ts: now.clone()
         })
     }
 
@@ -1289,6 +1297,14 @@ impl Vmm {
         Ok(())
     }
 
+    fn join_vcpus(&mut self) {
+        //for vcpu in self.vcpus_handles {
+        //    vcpu.join().expect("Couldn't join on the associated thread");
+        //}
+        //let vcpu = self.vcpus_handles.remove(0);
+        //vcpu.join().expect("Couldn't join on the associated thread");
+    }
+
     fn load_kernel(&mut self) -> std::result::Result<GuestAddress, StartMicrovmError> {
         // This is the easy way out of consuming the value of the kernel_cmdline.
         let kernel_config = self
@@ -1484,13 +1500,19 @@ impl Vmm {
         }
 
         // Log the metrics before exiting.
-        if let Err(e) = LOGGER.log_metrics() {
-            error!("Failed to log metrics while stopping: {}", e);
-        }
+        //if let Err(e) = LOGGER.log_metrics() {
+        //    error!("Failed to log metrics while stopping: {}", e);
+       // }
 
         // Exit from Firecracker using the provided exit code. Safe because we're terminating
         // the process anyway.
-        info!("Vmm is REALLY about to stop.");
+        //error!("Vmm is REALLY about to stop.");
+        Vmm::log_complete_time(&self.start_ts);
+        //for vcpu in self.vcpus_handles {
+        //    vcpu.join().expect("Couldn't join on the associated thread");
+        //}
+        //self.join_vcpus();
+        //info!("Vmm is REALLY about to stop .. again.");
         unsafe {
             libc::_exit(exit_code);
         }
@@ -1533,6 +1555,7 @@ impl Vmm {
                                 }
                                 None => warn!("leftover exit-evt in epollcontext!"),
                             }
+                            error!("Stopping from EpollDispatch!");
                             self.stop(i32::from(FC_EXIT_CODE_OK));
                         }
                         EpollDispatch::Stdin => {
@@ -2056,6 +2079,21 @@ impl Vmm {
             boot_time_cpu_us / 1000
         );
     }
+
+    fn log_complete_time(t0_ts: &TimestampUs) {
+        let now_cpu_us = now_cputime_us();
+        let now_us = get_time_us();
+
+        let complete_time_us = now_us - t0_ts.time_us;
+        let complete_time_cpu_us = now_cpu_us - t0_ts.cputime_us;
+        info!(
+            "Complete-time = {:>6} us {} ms, {:>6} CPU us {} CPU ms",
+            complete_time_us,
+            complete_time_us / 1000,
+            complete_time_cpu_us,
+            complete_time_cpu_us / 1000
+        );
+    }
 }
 
 // Can't derive PartialEq directly because the sender members can't be compared.
@@ -2130,7 +2168,7 @@ pub fn start_vmm_thread(
                 .expect("Cannot create VMM");
             match vmm.run_control() {
                 Ok(()) => {
-                    info!("Gracefully terminated VMM control loop");
+                    error!("Gracefully terminated VMM control loop");
                     vmm.stop(i32::from(FC_EXIT_CODE_OK))
                 }
                 Err(e) => {
@@ -2210,10 +2248,11 @@ pub fn start_vmm_without_api(
     }
 
     let _res = vmm.start_microvm();
+    error!("After vmm.start_microvm()");
 
     match vmm.run_control() {
         Ok(()) => {
-            info!("Gracefully terminated VMM control loop");
+            error!("Gracefully terminated VMM control loop");
             vmm.stop(i32::from(FC_EXIT_CODE_OK));
         }
         Err(e) => {
@@ -2221,6 +2260,8 @@ pub fn start_vmm_without_api(
             vmm.stop(i32::from(FC_EXIT_CODE_GENERIC_ERROR));
         }
     }
+
+
 }
 
 #[cfg(test)]
