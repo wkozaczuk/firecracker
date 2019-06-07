@@ -336,7 +336,6 @@ impl Vcpu {
                     {
                         super::Vmm::log_boot_time(&self.create_ts);
                     }
-                    /* 
                     if addr == 0x64
                         && data[0] == 0xFE //CMD_RESET_CPU
                     {
@@ -347,10 +346,10 @@ impl Vcpu {
                         self.io_bus.write(u64::from(addr), data);
                         METRICS.vcpu.exit_io_out.inc();
                         Ok(())
-                    }*/
-                    self.io_bus.write(u64::from(addr), data);
-                    METRICS.vcpu.exit_io_out.inc();
-                    Ok(())
+                    }
+                    //self.io_bus.write(u64::from(addr), data);
+                    //METRICS.vcpu.exit_io_out.inc();
+                    //Ok(())
                 }
                 VcpuExit::MmioRead(addr, data) => {
                     if let Some(ref mmio_bus) = self.mmio_bus {

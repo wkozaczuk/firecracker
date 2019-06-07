@@ -41,14 +41,17 @@ pub fn default_filter() -> Result<SeccompFilter, Error> {
                 ]],
             ),
             allow_syscall(libc::SYS_fstat),
-            allow_syscall_if(
+            allow_syscall(libc::SYS_futex),
+            allow_syscall(libc::SYS_sigaltstack),
+            allow_syscall(libc::SYS_rt_sigprocmask),
+            /*allow_syscall_if(
                 libc::SYS_futex,
                 or![
                     and![Cond::new(1, Eq, super::FUTEX_WAIT_PRIVATE)?],
                     and![Cond::new(1, Eq, super::FUTEX_WAKE_PRIVATE)?],
                     and![Cond::new(1, Eq, super::FUTEX_REQUEUE_PRIVATE)?],
                 ],
-            ),
+            ),*/
             allow_syscall(libc::SYS_getrandom),
             allow_syscall_if(libc::SYS_ioctl, super::create_ioctl_seccomp_rule()?),
             allow_syscall(libc::SYS_lseek),

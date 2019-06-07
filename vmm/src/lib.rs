@@ -1298,11 +1298,15 @@ impl Vmm {
     }
 
     fn join_vcpus(&mut self) {
-        //for vcpu in self.vcpus_handles {
-        //    vcpu.join().expect("Couldn't join on the associated thread");
+        //for vcpu in self.vcpus_handles.iter() {
+        //   if let Some(cpu) = vcpu {
+        //       cpu.join().expect("Couldn't join on the associated thread");
+        //    }
         //}
-        //let vcpu = self.vcpus_handles.remove(0);
-        //vcpu.join().expect("Couldn't join on the associated thread");
+        let vcpu = self.vcpus_handles.pop();
+        if let Some(handle) = vcpu {
+            handle.join().expect("Couldn't join on the associated thread");
+        }
     }
 
     fn load_kernel(&mut self) -> std::result::Result<GuestAddress, StartMicrovmError> {
@@ -1502,13 +1506,14 @@ impl Vmm {
         // Log the metrics before exiting.
         //if let Err(e) = LOGGER.log_metrics() {
         //    error!("Failed to log metrics while stopping: {}", e);
-       // }
+        // }
 
         // Exit from Firecracker using the provided exit code. Safe because we're terminating
         // the process anyway.
         //error!("Vmm is REALLY about to stop.");
         Vmm::log_complete_time(&self.start_ts);
-        //for vcpu in self.vcpus_handles {
+        self.join_vcpus();
+        //for vcpu in self.vcpus_handles.iter() {
         //    vcpu.join().expect("Couldn't join on the associated thread");
         //}
         //self.join_vcpus();
