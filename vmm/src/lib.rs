@@ -1513,14 +1513,10 @@ impl Vmm {
         //error!("Vmm is REALLY about to stop.");
         Vmm::log_complete_time(&self.start_ts);
         self.join_vcpus();
-        //for vcpu in self.vcpus_handles.iter() {
-        //    vcpu.join().expect("Couldn't join on the associated thread");
+        info!("Vmm is REALLY about to stop .. again.");
+        //unsafe {
+        //    libc::_exit(exit_code);
         //}
-        //self.join_vcpus();
-        //info!("Vmm is REALLY about to stop .. again.");
-        unsafe {
-            libc::_exit(exit_code);
-        }
     }
 
     fn is_instance_initialized(&self) -> bool {
@@ -1561,7 +1557,8 @@ impl Vmm {
                                 None => warn!("leftover exit-evt in epollcontext!"),
                             }
                             error!("Stopping from EpollDispatch!");
-                            self.stop(i32::from(FC_EXIT_CODE_OK));
+                            //self.stop(i32::from(FC_EXIT_CODE_OK));
+                            break 'poll;
                         }
                         EpollDispatch::Stdin => {
                             let mut out = [0u8; 64];
@@ -1630,6 +1627,7 @@ impl Vmm {
                 }
             }
         }
+        Ok(())
     }
 
     // Count the number of pages dirtied since the last call to this function.

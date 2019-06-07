@@ -434,11 +434,11 @@ impl Vcpu {
 
         thread_barrier.wait();
 
-        error!("Vstate before run_emulation()");
+        //error!("Vstate before run_emulation()");
 
         while self.run_emulation().is_ok() {}
 
-        error!("Vstate finished !");
+        error!("run_emulation() loop broke!");
 
         // Nothing we need do for the success case.
         //if let Err(e) = vcpu_exit_evt.write(1) {
