@@ -34,6 +34,8 @@ use net_util::MacAddr;
 const DEFAULT_INSTANCE_ID: &str = "anonymous-instance";
 
 fn main() {
+    let main_start_ts = (chrono::Utc::now().timestamp_nanos() / 1000) as u64;
+
     LOGGER
         .preinit(Some(DEFAULT_INSTANCE_ID.to_string()))
         .expect("Failed to register logger");
@@ -207,5 +209,13 @@ fn main() {
         Some(vm_config),
         block_devices,
         net_devices,
+    );
+
+    let now_us = (chrono::Utc::now().timestamp_nanos() / 1000) as u64;
+    let end_time_us = now_us - main_start_ts;
+    info!(
+        "Main-complete-time = {:>6} us {} ms",
+        end_time_us,
+        end_time_us / 1000
     );
 }
